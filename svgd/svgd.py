@@ -25,7 +25,7 @@ def gaussian_init_fun(key, loc: Particle, scale: float, n_atoms: int) -> List[Pa
         keys.append(sub)
     return jnp.array([jax.random.multivariate_normal(k, loc, scale) for k in keys])
 
-default_rbf_kernel = partial(rbf, 50)
+default_rbf_kernel = partial(rbf, 2)
 default_gaussian_init_fun = partial(gaussian_init_fun,
                                     jax.random.PRNGKey(0),
                                     [0, 0],
@@ -45,7 +45,6 @@ class svgd():
 
     def update(self, target: Callable[[Particle], Probability]):
         grads = svgd_grads(self.particles, self.kernel, target)
-        print(f"Grad norm: {jnp.linalg.norm(grads)}")
         self.particles = self.particles + self.lr * grads
 
 # @jax.jit
@@ -59,5 +58,5 @@ def svgd_grads(particles: List[Particle],
     kernel_matrix = kernel_matrix_fn(particles, particles)
     # [N, d]
     kernel_grads = jax.vmap(jax.grad(lambda x, y: jax.vmap(kernel, in_axes=(None, 0))(x, y).sum()), in_axes=(0, None))(particles, particles)
-    grad_matrix = (kernel_matrix @ logprobgrads) + kernel_grads
+    grad_matrix = (kernel_matrix @ logprobgrads) - kernel_grads
     return grad_matrix / len(particles)
