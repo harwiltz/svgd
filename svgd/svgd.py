@@ -13,7 +13,7 @@ Probability = float
 
 @jax.jit
 def rbf(scale: float, x: Particle, y: Particle) -> float:
-    return jnp.exp(jnp.linalg.norm(x - y) ** 2 / (2 * scale))
+    return jnp.exp(-(x - y).dot(x - y)/ (2 * scale))
 
 # @jax.jit
 def gaussian_init_fun(key, loc: Particle, scale: float, n_atoms: int) -> List[Particle]:
@@ -25,7 +25,7 @@ def gaussian_init_fun(key, loc: Particle, scale: float, n_atoms: int) -> List[Pa
         keys.append(sub)
     return jnp.array([jax.random.multivariate_normal(k, loc, scale) for k in keys])
 
-default_rbf_kernel = partial(rbf, 1.0)
+default_rbf_kernel = partial(rbf, 50)
 default_gaussian_init_fun = partial(gaussian_init_fun,
                                     jax.random.PRNGKey(0),
                                     [0, 0],
@@ -35,7 +35,7 @@ default_gaussian_init_fun = partial(gaussian_init_fun,
 class svgd():
     def __init__(self,
                  n_atoms: int,
-                 lr: Optional[float] = 1e-4,
+                 lr: Optional[float] = 1e-1,
                  kernel: Optional[Kernel] = default_rbf_kernel,
                  init_fun: Optional[ParticleInitializer] = default_gaussian_init_fun):
         self.particles = init_fun(n_atoms)
@@ -54,10 +54,10 @@ def svgd_grads(particles: List[Particle],
                target: Callable[[Particle], Probability]) -> List[Particle]:
     # [N, d]
     logprobgrads = jax.vmap(jax.grad(lambda x: jnp.log(target(x))))(particles)
-    kernel_matrix_fn = jax.vmap(kernel)
+    kernel_matrix_fn = jax.vmap(jax.vmap(kernel, in_axes=(0, None)), in_axes=(None, 0))
     # [N, N]
     kernel_matrix = kernel_matrix_fn(particles, particles)
     # [N, d]
-    kernel_grads = jax.jacfwd(kernel_matrix_fn)(particles, particles).sum(axis=0)
+    kernel_grads = jax.vmap(jax.grad(lambda x, y: jax.vmap(kernel, in_axes=(None, 0))(x, y).sum()), in_axes=(0, None))(particles, particles)
     grad_matrix = (kernel_matrix @ logprobgrads) + kernel_grads
     return grad_matrix / len(particles)

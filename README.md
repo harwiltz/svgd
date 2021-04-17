@@ -12,3 +12,9 @@ Implementation of Stein Variational Gradient Descent:
   primaryClass = {stat.ML},
 }
 ```
+
+## Mode Collapse
+
+It seems the algorithm is struggling with mode collapse even on a simple mixture of Gaussians experiment.
+
+![](result.png)
