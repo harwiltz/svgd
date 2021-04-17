@@ -13,8 +13,14 @@ Implementation of Stein Variational Gradient Descent:
 }
 ```
 
-## Mode Collapse
+## Example
 
-It seems the algorithm is struggling with mode collapse even on a simple mixture of Gaussians experiment.
+To visualize the dynamics of the particles, you can run
+
+```bash
+$ PYTHONPATH=. python svgd/examples/testbed.py
+```
+
+Below is an example snapshot of the particles after they've converged.
 
 ![](result.png)
